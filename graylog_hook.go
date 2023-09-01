@@ -62,6 +62,26 @@ func NewGraylogHook(addr string, extra map[string]interface{}) *GraylogHook {
 	return hook
 }
 
+// NewGraylogHookForWriter creates a hook to be added to an instance of logger.
+// It also allows the user to use a custom implementation of a GELFWriter to support
+// different protocols or additional HTTP headers.
+func NewGraylogHookForWriter(writer GELFWriter, extra map[string]interface{}) *GraylogHook {
+	host, err := os.Hostname()
+	if err != nil {
+		host = "localhost"
+	}
+
+	hook := &GraylogHook{
+		Host:        host,
+		Extra:       extra,
+		Level:       logrus.DebugLevel,
+		gelfLogger:  writer,
+		synchronous: true,
+	}
+
+	return hook
+}
+
 // NewAsyncGraylogHook creates a hook to be added to an instance of logger.
 // The hook created will be asynchronous, and it's the responsibility of the user to call the Flush method
 // before exiting to empty the log queue.
@@ -81,6 +101,28 @@ func NewAsyncGraylogHook(addr string, extra map[string]interface{}) *GraylogHook
 		Extra:      extra,
 		Level:      logrus.DebugLevel,
 		gelfLogger: g,
+		buf:        make(chan graylogEntry, BufSize),
+	}
+	go hook.fire() // Log in background
+
+	return hook
+}
+
+// NewAsyncGraylogHookForWriter creates a hook to be added to an instance of logger.
+// The hook created will be asynchronous, and it's the responsibility of the user to call the Flush method
+// before exiting to empty the log queue. It also allows the user to use a custom implementation of a
+// GELFWriter to support different protocols or additional HTTP headers.
+func NewAsyncGraylogHookForWriter(writer GELFWriter, extra map[string]interface{}) *GraylogHook {
+	host, err := os.Hostname()
+	if err != nil {
+		host = "localhost"
+	}
+
+	hook := &GraylogHook{
+		Host:       host,
+		Extra:      extra,
+		Level:      logrus.DebugLevel,
+		gelfLogger: writer,
 		buf:        make(chan graylogEntry, BufSize),
 	}
 	go hook.fire() // Log in background
