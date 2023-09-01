@@ -234,10 +234,13 @@ func (hook *GraylogHook) sendEntry(entry graylogEntry) {
 	// original input.  If the input has no newlines, stick the
 	// whole thing in Short.
 	short := p
-	full := []byte("")
 	if i := bytes.IndexRune(p, '\n'); i > 0 {
 		short = p[:i]
-		full = p
+	}
+	formatter := &logrus.JSONFormatter{ DisableHTMLEscape: true }
+	full, err := formatter.Format(entry.Entry)
+	if err != nil {
+		return
 	}
 
 	level := logrusLevelToSyslog(entry.Level)
